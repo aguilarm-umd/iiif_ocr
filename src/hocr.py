@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List
 
+from numpy import int64
+
 PP_DOCLAYOUT_L_TO_HOCR = {
     "paragraph_title": "ocr_header",
     "image":           "ocr_float",
@@ -29,28 +31,29 @@ PP_DOCLAYOUT_L_TO_HOCR = {
 
 
 @dataclass
-class OCRBox:
-    """Represents a single OCR recognition box with coordinates and recognized text."""
+class Word:
+    """Represents a single OCR word with coordinates and OCR text."""
     coordinates: List[int]  # [x_min, y_min, x_max, y_max]
     text: str = ""
 
 
 @dataclass
-class LayoutBox:
-    """Represents a layout region with coordinates, type, and potentially nested children."""
-    coordinates: List[int]  # [x_min, y_min, x_max, y_max]
-    layout_type: str  # Key from PP_DOCLAYOUT_L_TO_HOCR mapping
+class Line:
+    """Represents a single OCR line, with its bounding box and nested words."""
+    coordinates: List[int] # [x_min, y_min, x_max, y_max]
+    words: List[Word] = field(default_factory=list)
 
 
 @dataclass
-class HierarchyNode:
-    """Represents a node in the hierarchical structure of layout boxes with nested children and OCR boxes."""
-    layout_box: LayoutBox
-    children: List["HierarchyNode"] = field(default_factory=list)
-    ocr_boxes: List[OCRBox] = field(default_factory=list)
+class Layout:
+    """A Layout can have other layouts nested within, with their own OCR lines."""
+    layout_type: str
+    coordinates: List[int]  # [x_min, y_min, x_max, y_max]
+    children: List["Layout"] = field(default_factory=list)
+    ocr_lines: List[Line] = field(default_factory=list)
 
 
-def is_box_contained(child_coords: List[int], parent_coords: List[int], overlap_threshold: float = 0.5) -> bool:
+def overlaps(child_coords: List[int], parent_coords: List[int], overlap_threshold: float = 0.5) -> bool:
     """
     Check if a child bounding box has sufficient overlap with a parent bounding box.
 
@@ -65,21 +68,22 @@ def is_box_contained(child_coords: List[int], parent_coords: List[int], overlap_
     Returns:
         True if child has sufficient overlap with parent, False otherwise
     """
-    child_x_min, child_y_min, child_x_max, child_y_max = child_coords
-    parent_x_min, parent_y_min, parent_x_max, parent_y_max = parent_coords
 
-    # Calculate intersection area
+    child_x_min, child_y_min, child_x_max, child_y_max = map(int64, child_coords)
+    parent_x_min, parent_y_min, parent_x_max, parent_y_max = map(int64, parent_coords)
+
     inter_x_min = max(child_x_min, parent_x_min)
     inter_y_min = max(child_y_min, parent_y_min)
     inter_x_max = min(child_x_max, parent_x_max)
     inter_y_max = min(child_y_max, parent_y_max)
 
-    # If no intersection, return False
     if inter_x_min >= inter_x_max or inter_y_min >= inter_y_max:
         return False
 
     intersection_area = (inter_x_max - inter_x_min) * (inter_y_max - inter_y_min)
     child_area = (child_x_max - child_x_min) * (child_y_max - child_y_min)
 
-    # Return True if intersection is at least overlap_threshold of child area
+    if child_area <= 0:
+        return False
+
     return intersection_area >= (overlap_threshold * child_area)
