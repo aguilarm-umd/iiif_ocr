@@ -8,7 +8,7 @@ import requests
 from paddleocr import LayoutDetection, PaddleOCR
 from yattag import Doc, indent
 
-from hocr import Layout, Line, Word, overlaps
+from hocr import PP_DOCLAYOUT_L_TO_HOCR, Layout, Line, Word, contains, overlaps
 from utils import scale_image
 
 ocr = PaddleOCR(
@@ -36,8 +36,10 @@ def build_hierarchy(layouts: List[Layout], lines: List[Line]) -> List[Layout]:
   # Iterate through the lines and then find the first layout that contains each line, and add the line to that layout's children
   for line in lines:
     for layout in layouts:
-      if overlaps(line.coordinates, layout.coordinates):
-        layout.children.append(line)
+      if overlaps(line.coordinates, layout.coordinates) \
+          or contains(line.coordinates, layout.coordinates) \
+          or contains(layout.coordinates, line.coordinates):
+        layout.ocr_lines.append(line)
         break  # Stop after the first containing layout is found
 
 
@@ -139,8 +141,25 @@ def generate_hocr(params):
         doc.stag('meta', name="ocr-capabilities", content="ocr_page ocr_carea ocr_par ocr_line ocrx_word")
 
   with tag('body'):
-    with tag('div', id="page_1", klass = 'ocr_page', title = f'image "{image_path}" bbox 0 0 {params["img_resource"].width} {params["img_resource"].height}'):
-      for line in params['lines']:
+    with tag('div', id=f"{params['page']}", klass = 'ocr_page', title = f'image "{image_path}"; bbox 0 0 {params["img_resource"].width} {params["img_resource"].height}'):
+      for layout in params['layouts']:
+        with tag('div',
+                 klass = PP_DOCLAYOUT_L_TO_HOCR[layout.layout_type],
+                 title = f'bbox {int(layout.coordinates[0])} {int(layout.coordinates[1])} {int(layout.coordinates[2])} {int(layout.coordinates[3])}'):
+          for line in layout.ocr_lines:
+            with tag('span',
+                     klass = 'ocr_line',
+                     title = f'bbox {int(line.coordinates[0])} {int(line.coordinates[1])} {int(line.coordinates[2])} {int(line.coordinates[3])}'):
+              for word in line.words:
+                with tag('span',
+                          klass = 'ocrx_word',
+                          title = f'bbox {int(word.coordinates[0])} {int(word.coordinates[1])} {int(word.coordinates[2])} {int(word.coordinates[3])}'):
+                  if word.text == ' ':
+                    doc.asis('&nbsp;')
+                  else:
+                    text(word.text)
+
+      for line in params['missing_lines']:
         with tag('span',
                  klass = 'ocr_line',
                  title = f'bbox {int(line.coordinates[0])} {int(line.coordinates[1])} {int(line.coordinates[2])} {int(line.coordinates[3])}'):
@@ -180,9 +199,12 @@ def process(params):
   predict_ocr_and_layout(params)
 
   # Build hierarchical structure
-  # params['hierarchy'] = build_hierarchy(params['layouts'],
-                                        # params['lines'])
+  params['hierarchy'] = build_hierarchy(params['layouts'],
+                                        params['lines'])
 
+  lines_in_layouts = [ocr_line for layout in params['layouts'] for ocr_line in layout.ocr_lines]
+  line_ids = {id(t) for t in lines_in_layouts}
+  params['missing_lines'] = [line for line in params['lines'] if id(line) not in line_ids]
 
   visualize_results(params)
   generate_hocr(params)

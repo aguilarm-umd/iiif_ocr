@@ -9,7 +9,7 @@ from utils import extract_uuid, load_manifest
 
 
 @click.command()
-@click.argument('manifest', type=str)
+@click.argument('manifest', type=str, metavar='<URL or local path>')
 @click.option('--visualize', is_flag=True, default=False, help='Visualize Bounding Boxes')
 @click.option('--gpu', is_flag=True, default=False, help='Use GPU when using OCR engine')
 def main(**kwargs):
