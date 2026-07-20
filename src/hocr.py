@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
 
-from numpy import int64
-
 PP_DOCLAYOUT_L_TO_HOCR = {
     "paragraph_title": "ocr_header",
     "image":           "ocr_float",
@@ -33,14 +31,14 @@ PP_DOCLAYOUT_L_TO_HOCR = {
 @dataclass
 class Word:
     """Represents a single OCR word with coordinates and OCR text."""
-    coordinates: List[int]  # [x_min, y_min, x_max, y_max]
+    coordinates: List[float]  # [x_min, y_min, x_max, y_max]
     text: str = ""
 
 
 @dataclass
 class Line:
     """Represents a single OCR line, with its bounding box and nested words."""
-    coordinates: List[int] # [x_min, y_min, x_max, y_max]
+    coordinates: List[float] # [x_min, y_min, x_max, y_max]
     words: List[Word] = field(default_factory=list)
 
 
@@ -48,42 +46,35 @@ class Line:
 class Layout:
     """A Layout can have other layouts nested within, with their own OCR lines."""
     layout_type: str
-    coordinates: List[int]  # [x_min, y_min, x_max, y_max]
+    coordinates: List[float]  # [x_min, y_min, x_max, y_max]
     children: List["Layout"] = field(default_factory=list)
     ocr_lines: List[Line] = field(default_factory=list)
 
 
-def overlaps(child_coords: List[int], parent_coords: List[int], overlap_threshold: float = 0.5) -> bool:
+def overlaps(line_coords: List[float], layout_coords: List[float]) -> bool:
     """
-    Check if a child bounding box has sufficient overlap with a parent bounding box.
-
-    A box is considered contained if the intersection area between child and parent
-    is at least `overlap_threshold` fraction of the child's area.
-
-    Args:
-        child_coords: [x_min, y_min, x_max, y_max] for the child box
-        parent_coords: [x_min, y_min, x_max, y_max] for the parent box
-        overlap_threshold: Minimum fraction of child area that must overlap (0.0-1.0, default 0.5 = 50%)
-
-    Returns:
-        True if child has sufficient overlap with parent, False otherwise
+    Checks for overlaps by axis-aligned bounding boxes (AABBs)
     """
 
-    child_x_min, child_y_min, child_x_max, child_y_max = map(int64, child_coords)
-    parent_x_min, parent_y_min, parent_x_max, parent_y_max = map(int64, parent_coords)
+    line_x_min, line_y_min, line_x_max, line_y_max = line_coords
+    layout_x_min, layout_y_min, layout_x_max, layout_y_max = layout_coords
 
-    inter_x_min = max(child_x_min, parent_x_min)
-    inter_y_min = max(child_y_min, parent_y_min)
-    inter_x_max = min(child_x_max, parent_x_max)
-    inter_y_max = min(child_y_max, parent_y_max)
+    if line_x_max <= layout_x_min or layout_x_max <= line_x_min:
+        return False  # No horizontal overlap
+    if line_y_max <= layout_y_min or layout_y_max <= line_y_min:
+        return False  # No vertical overlap
 
-    if inter_x_min >= inter_x_max or inter_y_min >= inter_y_max:
-        return False
+    return True
 
-    intersection_area = (inter_x_max - inter_x_min) * (inter_y_max - inter_y_min)
-    child_area = (child_x_max - child_x_min) * (child_y_max - child_y_min)
+def contains(line_coords: List[float], layout_coords: List[float]) -> bool:
+    """
+    Checks if the line is fully contained within the layout.
+    """
 
-    if child_area <= 0:
-        return False
+    line_x_min, line_y_min, line_x_max, line_y_max = line_coords
+    layout_x_min, layout_y_min, layout_x_max, layout_y_max = layout_coords
 
-    return intersection_area >= (overlap_threshold * child_area)
+    return (layout_x_min <= line_x_min and
+            layout_y_min <= line_y_min and
+            layout_x_max >= line_x_max and
+            layout_y_max >= line_y_max)

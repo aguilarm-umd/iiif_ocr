@@ -34,7 +34,7 @@ def load_manifest(manifest_input):
   # Otherwise, try as URI
   try:
     click.echo(f'Loading manifest from URI: {manifest_input}')
-    response = requests.get(manifest_input, timeout=30)
+    response = requests.get(manifest_input)
     response.raise_for_status()
     return response.json()
   except (requests.RequestException, json.JSONDecodeError) as e:
