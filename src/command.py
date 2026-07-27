@@ -5,11 +5,12 @@ import click
 
 from iiif_models import IIIFImageResource
 from process import process
-from utils import extract_uuid, load_manifest
+from utils import OCRBackend, extract_uuid, load_manifest
 
 
 @click.command()
 @click.argument('manifest', type=str, metavar='<URL or local path>')
+@click.option('--language', type=str, default='en', help='Language for OCR engine to detect, see languages.md')
 @click.option('--visualize', is_flag=True, default=False, help='Visualize Bounding Boxes')
 @click.option('--gpu', is_flag=True, default=False, help='Use GPU when using OCR engine')
 def main(**kwargs):
@@ -18,8 +19,10 @@ def main(**kwargs):
   """
   params = kwargs
 
+  params['ocr_backend'] = OCRBackend(lang=params['language'])
+
   try:
-    manifest_data = load_manifest(params["manifest"])
+    manifest_data = load_manifest(params['manifest'])
     click.secho('Successfully loaded manifest.\n', fg='white')
   except click.ClickException as e:
     click.secho(str(e), fg='red')
