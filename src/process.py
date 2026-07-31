@@ -1,14 +1,14 @@
 from importlib.metadata import version
+from io import BytesIO
 from typing import List
 
 import click
-import cv2
-import numpy as np
 import requests
+from numpy import array
+from PIL import Image, ImageDraw
 from yattag import Doc, indent
 
 from hocr import HOCR_MAPPINGS, Layout, Line, Word, contains, overlaps
-from utils import scale_image
 
 
 def build_hierarchy(layouts: List[Layout], lines: List[Line]) -> List[Layout]:
@@ -37,15 +37,50 @@ def build_hierarchy(layouts: List[Layout], lines: List[Line]) -> List[Layout]:
 
 
 def predict_ocr_and_layout(params):
-  click.secho(f'    Running OCR Prediction on {params["scaled_img_path"]}', fg='cyan')
-  results = params['ocr_backend'].ocr.predict(str(params['scaled_img_path']))
+  click.secho('    Running OCR Prediction', fg='cyan')
+  results = params['ocr_backend'].ocr.predict(array(params['img'])[:,:,::-1])  # BGR -> RGB
+
+  angle = results[0]["doc_preprocessor_res"]["angle"]
+
+  match angle:
+    case 90:
+      click.secho('    Image rotated 90 degrees counter-clockwise', fg='cyan')
+      params['img'] = params['img'].rotate(90, expand=True)
+    case 180:
+      click.secho('    Image rotated 180 degrees', fg='cyan')
+      params['img'] = params['img'].rotate(180, expand=True)
+    case 270:
+      click.secho('    Image rotated 270 degrees counter-clockwise', fg='cyan')
+      params['img'] = params['img'].rotate(270, expand=True)
+    case _:
+      pass
+
+  W, H = params['img'].size
+
   params['ocr_results'] = results
   lines = results[0]
   params['lines'] = []
 
   for line_box, word_boxes, word_texts in zip(lines['rec_boxes'], lines['text_word_boxes'], lines['text_word']):
-    line_coords = [coord / params['scale'] for coord in line_box.tolist()]
-    word_coords = [[coord / params['scale'] for coord in word_box] for word_box in word_boxes.tolist()]
+    match angle:
+      case 90:
+        x1, y1, x2, y2 = line_box.tolist()
+        line_coords = [H - y2, x1, H - y1, x2]
+        word_coords = [[H - y2, x1, H - y1, x2] for x1, y1, x2, y2 in word_boxes.tolist()]
+      case 180:
+        x1, y1, x2, y2 = line_box.tolist()
+        line_coords = [W - x2, H - y2, W - x1, H - y1]
+        word_coords = [[W - x2, H - y2, W - x1, H - y1] for x1, y1, x2, y2 in word_boxes.tolist()]
+      case 270:
+        x1, y1, x2, y2 = line_box.tolist()
+        line_coords = [y1, W - x2, y2, W - x1]
+        word_coords = [[y1, W - x2, y2, W - x1] for x1, y1, x2, y2 in word_boxes.tolist()]
+      case _:
+        line_coords = line_box.tolist()
+        word_coords = word_boxes.tolist()
+
+    line_coords = [coord / params['scale'] for coord in line_coords]
+    word_coords = [[coord / params['scale'] for coord in word_box] for word_box in word_coords]
 
     line = Line(
       coordinates=line_coords, words=[Word(coordinates=wc, text=wt) for wc, wt in zip(word_coords, word_texts)]
@@ -53,14 +88,27 @@ def predict_ocr_and_layout(params):
 
     params['lines'].append(line)
 
-  click.secho(f'    Running Layout Prediction on {params["scaled_img_path"]}', fg='cyan')
-  results = params['ocr_backend'].layout_model.predict(str(params['scaled_img_path']))
+  click.secho('    Running Layout Prediction', fg='cyan')
+  results = params['ocr_backend'].layout_model.predict(array(params['img'])[:,:,::-1])
   params['layout_results'] = results
   layouts = results[0]
   params['layouts'] = []
 
   for box in layouts['boxes']:
-    layout_coords = [coord / params['scale'] for coord in box['coordinate']]
+    match angle:
+      case 90:
+        x1, y1, x2, y2 = box['coordinate']
+        layout_coords = [H - y2, x1, H - y1, x2]
+      case 180:
+        x1, y1, x2, y2 = box['coordinate']
+        layout_coords = [W - x2, H - y2, W - x1, H - y1]
+      case 270:
+        x1, y1, x2, y2 = box['coordinate']
+        layout_coords = [y1, W - x2, y2, W - x1]
+      case _:
+        layout_coords = box['coordinate']
+
+    layout_coords = [coord / params['scale'] for coord in layout_coords]
     layout = Layout(layout_type=box['label'], coordinates=layout_coords)
     params['layouts'].append(layout)
 
@@ -81,26 +129,17 @@ def visualize_results(params):
 
   # Load the original (unscaled) image
   original_img_path = params['output_dir'] / f'{params["page"]}.{params["img_resource"].get_format()}'
-  params['img'] = cv2.imread(str(original_img_path))
+  params['img'] = Image.open(original_img_path)
+  drawing = ImageDraw.Draw(params['img'])
 
   for line in params['lines']:
-    x_min, y_min, x_max, y_max = line.coordinates
-
-    # Create 4 corner points for the rectangle
-    points = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]], dtype=np.int32)
-
-    cv2.polylines(params['img'], [points], True, (0, 255, 0), 2)  # Green for OCR
+    drawing.rectangle(xy=line.coordinates, outline='green', width=2, fill=None)
 
   for layout in params['layouts']:
-    x_min, y_min, x_max, y_max = layout.coordinates
-
-    # Create 4 corner points for the rectangle
-    points = np.array([[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]], dtype=np.int32)
-
-    cv2.polylines(params['img'], [points], True, (255, 0, 0), 2)  # Blue for layout
+    drawing.rectangle(xy=layout.coordinates, outline='blue', width=2, fill=None)
 
   bboxes_path = params['output_dir'] / f'{params["page"]}_bboxes.{params["img_resource"].get_format()}'
-  cv2.imwrite(str(bboxes_path), params['img'])
+  params['img'].save(str(bboxes_path))
   click.secho(f'    Saved image with bboxes to {bboxes_path}', fg='cyan')
 
 
@@ -181,22 +220,22 @@ def generate_hocr(params):
 
 
 def process(params):
-  params['scaled_img_path'] = params['output_dir'] / f'{params["page"]}_scaled.{params["img_resource"].get_format()}'
+  params['img_path'] = params['output_dir'] / f'{params["page"]}.{params["img_resource"].get_format()}'
 
-  if not params['scaled_img_path'].exists():
-    click.secho(f'    Downloading image to {params["scaled_img_path"]}', fg='yellow')
+  if not params['img_path'].exists():
+    click.secho(f'    Downloading image to {params["img_path"]}', fg='yellow')
     img_data = requests.get(params['img_resource'].id).content
+    params['img'] = Image.open(BytesIO(img_data))
 
     with open(params['output_dir'] / f'{params["page"]}.{params["img_resource"].get_format()}', 'wb') as f:
       f.write(img_data)
 
-    img_data, params['scale'] = scale_image(img_data)
-    with open(params['scaled_img_path'], 'wb') as f:
-      f.write(img_data)
-
   else:
-    longest_side = max(params['img_resource'].width, params['img_resource'].height)
-    params['scale'] = 2500 / longest_side
+    params['img'] = Image.open(params['output_dir'] / f'{params["page"]}.{params["img_resource"].get_format()}')
+
+  longest_side = max(params['img_resource'].width, params['img_resource'].height)
+  params['scale'] = 2500 / longest_side
+  params['img'].thumbnail((2500, 2500))
 
   predict_ocr_and_layout(params)
 
