@@ -45,9 +45,10 @@ The tool creates a `downloads/` directory organized by resource ID:
 ``` text
 downloads/
   <resource-id>/
-    page_0_annotated.jpeg # Outputted with --visualize flag
-    page_0_scaled.jpeg
-    page_0.hocr
+    page_0_bboxes.jpeg # Outputted with --visualize flag
+    page_0_layout_visualization.jpeg # Outputted with --visualize flag
+    page_0_ocr_visualization.jpeg # Outputted with --visualize flag
+    page_0.html
     page_0.jpeg
     ...
 ```
