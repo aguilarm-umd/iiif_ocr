@@ -234,8 +234,8 @@ def process(params):
     params['img'] = Image.open(params['output_dir'] / f'{params["page"]}.{params["img_resource"].get_format()}')
 
   longest_side = max(params['img_resource'].width, params['img_resource'].height)
-  params['scale'] = 2500 / longest_side
-  params['img'].thumbnail((2500, 2500))
+  params['scale'] = 736 / longest_side
+  params['img'].thumbnail((736, 736))
 
   predict_ocr_and_layout(params)
 
