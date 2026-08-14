@@ -150,7 +150,7 @@ def generate_hocr(params):
   Args:
     params: Dictionary containing 'lines', 'layouts', and other relevant data.
   """
-  hocr_path = params['output_dir'] / f'{params["page"]}.hocr'
+  hocr_path = params['output_dir'] / f'{params["page"]}.html'
   image_path = params['output_dir'] / f'{params["page"]}.{params["img_resource"].get_format()}'
 
   doc, tag, text, line = Doc().ttl()
