@@ -1,10 +1,12 @@
 import json
-import re
 from pathlib import Path
+from uuid import NAMESPACE_URL, uuid5
 
 import click
 import requests
 from paddleocr import LayoutDetection, PaddleOCR
+
+from iiif_models import IIIFImageResource
 
 
 class OCRBackend:
@@ -21,7 +23,7 @@ class OCRBackend:
     self.layout_model = LayoutDetection(model_name='PP-DocLayout-L')
 
 
-def load_manifest(manifest_input):
+def load_manifest(manifest_input) -> tuple[list[IIIFImageResource], str]:
   """
   Load a manifest from either a file path or a URI.
 
@@ -29,35 +31,48 @@ def load_manifest(manifest_input):
     manifest_input: Either a file path (str/Path) or a URI string
 
   Returns:
-    dict: The parsed manifest JSON
+    list of IIIFImageResource objects and a resource ID (str)
 
   Raises:
     click.ClickException: If the manifest cannot be loaded
   """
   # Try to load as a file first
   path = Path(manifest_input)
-  if path.exists() and path.is_file():
+  if path.is_file():
     try:
       click.echo(f'Loading manifest from file: {manifest_input}')
       with open(path, 'r') as f:
-        return json.load(f)
+        manifest = json.load(f)
     except (OSError, json.JSONDecodeError) as e:
       raise click.ClickException(f'Failed to load manifest from file: {e}')
 
   # Otherwise, try as URI
-  try:
-    click.echo(f'Loading manifest from URI: {manifest_input}')
-    response = requests.get(manifest_input)
-    response.raise_for_status()
-    return response.json()
-  except (requests.RequestException, json.JSONDecodeError) as e:
-    raise click.ClickException(f'Failed to load manifest from URI: {e}')
+  else:
+    try:
+      click.echo(f'Loading manifest from URI: {manifest_input}')
+      response = requests.get(manifest_input)
+      response.raise_for_status()
+      manifest = response.json()
+    except (requests.RequestException, json.JSONDecodeError) as e:
+      raise click.ClickException(f'Failed to load manifest from URI: {e}')
 
+  click.secho('Successfully fetched JSON data.\n', fg='white')
 
-def extract_uuid(path):
-  """
-  Finds a UUID (8-4-4-4-12 pattern) in a string.
-  Example: 162922a8-1dbb-46ee-9425-a10f3665fe7d
-  """
-  match = re.search(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', path)
-  return match.group(0) if match else None
+  resource_id = str(uuid5(NAMESPACE_URL, manifest.get('id', manifest.get('@id'))))
+
+  # Extract image resources
+  images = []
+  if '@id' in manifest:
+    # IIIF Presentation API v2 structure
+    for canvas in manifest.get('sequences', [{}])[0].get('canvases', []):
+      if 'images' in canvas and canvas['images']:
+        img_resource = IIIFImageResource.from_dict(canvas['images'][0]['resource'])
+        images.append(img_resource)
+  else:
+    # IIIF Presentation API v3 structure
+    for item in manifest.get('items', []):
+      image = item['items'][0]['items'][0]['body'] # AnnotationPage -> Annotation -> Image
+      img_resource = IIIFImageResource.from_dict(image)
+      images.append(img_resource)
+
+  return images, str(resource_id)
