@@ -9,6 +9,13 @@ from utils import OCRBackend, load_manifest
 
 @click.command()
 @click.argument('manifest', type=str, metavar='<URL or local path>')
+@click.option(
+    '--size', 
+    type=click.Choice(['small', 'medium', 'large'], case_sensitive=False),
+    default='medium',
+    show_default=True,
+    help='Select the size of the image when downscaling. The options correspond to a downscaled image of 625, 1250, or 2500 pixels respectively'
+)
 @click.option('--language', type=str, default='en', help='Language for OCR engine to detect, see languages.md')
 @click.option('--visualize', is_flag=True, default=False, help='Visualize Bounding Boxes')
 @click.option('--gpu', is_flag=True, default=False, help='Use GPU when using OCR engine')
@@ -17,6 +24,14 @@ def main(**kwargs):
   Generate an hOCR file from a IIIF Manifest
   """
   params = kwargs
+
+  match params['size']:
+    case 'small':
+      params['size'] = 625
+    case 'medium':
+      params['size'] = 1250
+    case 'large':
+      params['size'] = 2500
 
   params['ocr_backend'] = OCRBackend(lang=params['language'])
 
