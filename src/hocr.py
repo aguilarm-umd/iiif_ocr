@@ -4,6 +4,7 @@ from typing import List
 # https://paddlepaddle.github.io/PaddleX/latest/en/module_usage/tutorials/ocr_modules/layout_detection.html#ii-supported-model-list
 # https://kba.github.io/hocr-spec/1.2/#floats-image
 HOCR_MAPPINGS = {
+  'content' : 'ocr_carea',
   'doc_title': 'ocr_title', # Documentation says 'document title' but it errors?
   'paragraph_title': 'ocr_header',
   'text': 'ocr_par',
