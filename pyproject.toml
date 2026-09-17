@@ -1,30 +1,9 @@
-[project]
-name = "iiif-ocr"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = "~=3.10.0"
-dependencies = [
-    "click>=8.3.1",
-    "numpy>=2.2.6",
-    "paddleocr>=3.3.2",
-    "paddlepaddle<3.3.0",
-    "pillow==9.5.0",
-    "requests>=2.32.5",
-    "ruff>=0.14.10",
-    "yattag>=1.16.1",
-]
-
 [tool.uv]
-package = true
+workspace = { members = ["iiif-ocr-core", "iiif-ocr-cli", "iiif-ocr-web"] }
 
 [tool.ruff]
 indent-width = 2
 line-length = 120
 
-
 [tool.ruff.format]
 quote-style = "single"
-
-[project.scripts]
-iiif_ocr = "command:main"

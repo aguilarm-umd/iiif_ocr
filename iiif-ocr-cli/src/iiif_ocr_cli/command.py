@@ -1,10 +1,33 @@
-from pathlib import Path
+import logging
 from traceback import format_exc
 
 import click
 
-from process import process
-from utils import OCRBackend, load_manifest
+from iiif_ocr_core.processor import OCRProcessor, ProcessingError
+from iiif_ocr_core.manifest import ManifestError
+
+
+class ClickLogHandler(logging.Handler):
+  _colors = {
+    logging.INFO: 'cyan',
+    logging.WARNING: 'yellow',
+    logging.ERROR: 'red',
+    logging.CRITICAL: 'red',
+  }
+
+  def emit(self, record):
+    try:
+      click.secho(self.format(record), fg=self._colors.get(record.levelno, 'white'))
+    except Exception:
+      self.handleError(record)
+
+
+def configure_logging():
+  logger = logging.getLogger('iiif_ocr_core')
+  logger.handlers.clear()
+  logger.addHandler(ClickLogHandler())
+  logger.setLevel(logging.INFO)
+  logger.propagate = False
 
 
 @click.command()
@@ -23,6 +46,7 @@ def main(**kwargs):
   """
   Generate an hOCR file from a IIIF Manifest
   """
+  configure_logging()
   params = kwargs
 
   match params['size']:
@@ -33,41 +57,20 @@ def main(**kwargs):
     case 'large':
       params['size'] = 2500
 
-  params['ocr_backend'] = OCRBackend(lang=params['language'])
-
   try:
-    images, resource_id = load_manifest(params['manifest'])
-    click.secho('Successfully loaded manifest.\n', fg='white')
-  except click.ClickException as e:
+    processor = OCRProcessor(
+      manifest=kwargs['manifest'],
+      size=kwargs['size'],
+      language=kwargs['language'],
+      visualize=kwargs['visualize'],
+      gpu=kwargs['gpu'],
+    )
+    generated_files = processor()
+    click.secho(f'\nDone! Generated {len(generated_files)} hOCR file(s).', fg='green', bold=True)
+  except (ManifestError, ProcessingError) as e:
     click.secho(str(e), fg='red')
     ctx = click.get_current_context()
     ctx.exit(code=1)
-
-  if resource_id is None:
-    click.secho('Could not extract Resource ID', fg='red')
-    ctx = click.get_current_context()
-    ctx.exit(code=1)
-
-  output_dir = Path('downloads') / resource_id
-  click.secho(f'Storing content in {output_dir}\n', fg='white')
-
-  output_dir.mkdir(parents=True, exist_ok=True)
-  params['output_dir'] = output_dir
-
-  try:
-    if not images:
-      raise click.ClickException('No images found in the manifest.')
-
-    for i, image in enumerate(images):
-      click.secho(f'[*] Processing page {i + 1}/{len(images)}...', fg='white')
-
-      params['page'] = f'page_{i}'
-      params['img_resource'] = image
-
-      process(params)
-
-    click.secho('\nDone!', fg='green', bold=True)
-
   except Exception:
     click.secho(format_exc(), fg='red')
     ctx = click.get_current_context()
