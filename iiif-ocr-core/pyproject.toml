@@ -6,12 +6,12 @@ build-backend = "uv_build"
 name = "iiif-ocr-core"
 version = "0.1.0"
 description = "Reusable IIIF OCR processing logic"
-requires-python = "~=3.10.0"
+requires-python = "~=3.13.0"
 dependencies = [
   "numpy>=2.2.6",
   "paddleocr>=3.3.2",
   "paddlepaddle<3.3.0",
-  "pillow==9.5.0",
+  "pillow~=12.3.0",
   "requests>=2.32.5",
   "yattag>=1.16.1",
 ]
