@@ -7,7 +7,7 @@ name = "iiif-ocr-cli"
 version = "0.1.0"
 description = "Command-line interface for IIIF OCR"
 readme = "../README.md"
-requires-python = "~=3.10.0"
+requires-python = "~=3.13.0"
 dependencies = [
   "click>=8.3.1",
   "iiif-ocr-core",
