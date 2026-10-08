@@ -1,0 +1,58 @@
+{% extends "ocr/base.html" %}
+
+{% block title %}IIIF OCR{% endblock %}
+
+{% block content %}
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label>
+      {{ form.url.label }}
+      {{ form.url }}
+      {{ form.url.errors }}
+    </label>
+    <label>
+      Language
+      {{ form.language }}
+      {{ form.language.errors }}
+    </label>
+    <label>
+      Image size
+      {{ form.image_size }}
+      {{ form.image_size.errors }}
+    </label>
+    <label>
+      {{ form.visualize }}
+      {{ form.visualize.label }}
+      {{ form.visualize.errors }}
+    </label>
+    <button type="submit">Add manifest</button>
+  </form>
+
+  {% if manifests %}
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Manifest</th><th>Status</th><th>Jobs</th><th>Added</th></tr>
+      </thead>
+      <tbody>
+        {% for manifest in manifests %}
+          <tr>
+            <td>
+              <a href="{% url 'manifest-detail' manifest.id %}">
+                <code>{{ manifest.id }}</code>
+              </a>
+            </td>
+            <td>
+              <a href="{{ manifest.url }}">{{ manifest.url }}</a>
+            </td>
+            <td>{{ manifest.get_status_display }}</td>
+            <td>{{ manifest.jobs.count }}</td>
+            <td>{{ manifest.created_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No manifests have been added yet.</p>
+  {% endif %}
+{% endblock %}
