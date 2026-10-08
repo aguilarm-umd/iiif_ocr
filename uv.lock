@@ -277,7 +277,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.3.1" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "paddleocr", specifier = ">=3.3.2" },
-    { name = "paddlepaddle", specifier = ">=3.3.0" },
+    { name = "paddlepaddle", specifier = "<3.3.0" },
     { name = "pillow", specifier = "==9.5.0" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "ruff", specifier = ">=0.14.10" },
@@ -395,7 +395,7 @@ wheels = [
 
 [[package]]
 name = "paddlepaddle"
-version = "3.3.0"
+version = "3.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -408,9 +408,10 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/ac/20f5107136e903430a0a405c395d68a07a44d29002cf5af6ed7d9a46dc63/paddlepaddle-3.3.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d7829960c98fdff2fe9be8fe5500e43a6365e31a5f1025bd1108f636361e0f1a", size = 103656753, upload-time = "2026-01-13T09:14:12.305Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/d5/ce19b6c204e6180362d31baf910ed7240d488ea4e08b0f34baff55a5f7c3/paddlepaddle-3.3.0-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:2c8507b5cec35286e05ba67100edcb4e528bdd80be03d40bbac2a1396e03fc70", size = 193697833, upload-time = "2026-01-13T08:54:12.398Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/4b/7aa9eed9c9cfcc882d7ba745aa13d3e7749abedaaebe1535dfb3815b45e4/paddlepaddle-3.3.0-cp310-cp310-win_amd64.whl", hash = "sha256:87a9fe86bd6f5932f09f14c2326dd1a4896bba1caac999cfcd38b93f5ead5027", size = 104257759, upload-time = "2026-01-13T09:32:17.534Z" },
+    { url = "https://files.pythonhosted.org/packages/16/ef/4977a2cb4e743e340f272ee436d92f741bc2d29c5b17258b865c5792afbb/paddlepaddle-3.2.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:c1d5c5b8d15faacbe75448755a1553e289bcb77992edc42f451821ec06f9306c", size = 99457690, upload-time = "2025-11-14T13:22:50.893Z" },
+    { url = "https://files.pythonhosted.org/packages/e0/05/0885e52c50b089e0e27e5b1a4a09cb1c97fded5b7f3d0e9b99b3b7972ee3/paddlepaddle-3.2.2-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:dcb41609f6f4bdba0404354d5f21b446467b615f5a5bf67a7c75ebc20b42c6a9", size = 189256236, upload-time = "2025-11-19T11:49:29.657Z" },
+    { url = "https://files.pythonhosted.org/packages/91/79/32a339237300b1576bd1dc07b82dcbfbc7c0395f7069483f2483ec02d688/paddlepaddle-3.2.2-cp310-cp310-manylinux2014_aarch64.whl", hash = "sha256:ad47135f9861bd70de5af4e7d513ca099fa7abd5fbc5461c45f860d47b5098a2", size = 88170123, upload-time = "2025-11-19T11:15:04.118Z" },
+    { url = "https://files.pythonhosted.org/packages/81/48/fa3b67cb7b680ab67411dd1b104f3ed62cd73eeaa16670dba8986b23dad7/paddlepaddle-3.2.2-cp310-cp310-win_amd64.whl", hash = "sha256:a48825235d19f2706089c1bfaf171fe4188e55319ce0f5285aa50f73dc559ab0", size = 101714320, upload-time = "2025-11-14T13:10:44.937Z" },
 ]
 
 [[package]]
