@@ -1,0 +1,55 @@
+{% extends "ocr/base.html" %}
+
+{% block title %}Manifest {{ manifest.id }}{% endblock %}
+
+{% block content %}
+  <p><a href="{% url 'home' %}">&larr; Back to manifests</a></p>
+  <h1>Manifest</h1>
+  <p><code>{{ manifest.id }}</code></p>
+  <p><a href="{{ manifest.url }}">{{ manifest.url }}</a></p>
+
+  <h2>Run OCR</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+      {{ form.language.label_tag }}
+      {{ form.language }}
+      {{ form.language.errors }}
+    </p>
+    <p>
+      {{ form.image_size.label_tag }}
+      {{ form.image_size }}
+      {{ form.image_size.errors }}
+    </p>
+    <p>
+      {{ form.visualize }}
+      {{ form.visualize.label }}
+      {{ form.visualize.errors }}
+    </p>
+    <button type="submit">Run OCR</button>
+  </form>
+
+  <h2>OCR Jobs</h2>
+  {% if manifest.jobs.all %}
+    <table>
+      <thead>
+        <tr><th>Job</th><th>Language</th><th>Image size</th><th>Visualizations</th><th>Status</th><th>Created</th></tr>
+      </thead>
+      <tbody>
+        {% for job in manifest.jobs.all %}
+          <tr>
+            <td>{{ job.number }}</td>
+            <td>{{ job.get_language_display }}</td>
+            <td>{{ job.get_image_size_display }}</td>
+            <td>{{ job.visualize|yesno:"Yes,No" }}</td>
+            <td>{{ job.get_status_display }}{% if job.current_page is not None %} (page {{ job.current_page }}){% endif %}</td>
+            <td>{{ job.created_at }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No OCR jobs have been run for this manifest.</p>
+  {% endif %}
+{% endblock %}
